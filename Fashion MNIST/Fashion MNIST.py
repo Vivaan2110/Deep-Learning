@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import keras
 
+
 df=keras.datasets.fashion_mnist.load_data() # Load the dataset
 
 (X_train,y_train),(X_test,y_test)=df
@@ -29,8 +30,8 @@ class_names = [
 
 # Building the model
 
-#
-# tf.random.set_seed(0) # have to set a random seed like in scikit learn to get reproducable results
+
+tf.random.set_seed(0) # have to set a random seed like in scikit learn to get reproducable results
 
 # A sequential model is where
 model=keras.Sequential(
@@ -46,13 +47,22 @@ model=keras.Sequential(
 #print(model.summary()) # Prints a table showing the layer(type), output shape and parameters
 
 
-'''
+
 # Compiling the model
 
-optimizer=keras.optimizers.SGD(learning_rate=0.1)  # The optimizer is called stochastic gradient descent
+optimizer=keras.optimizers.SGD(learning_rate=0.01,momentum=0.9,nesterov=True)  # The optimizer is called stochastic gradient descent
                                                     # The learning rate allows the model to update it parameters at every step
                                                     # A low learning rate doesnt let the model change the parameters fast to learn enough
                                                     # A high learning rate causes underfitting
+                                                    # Momentum adds velocity to the descent
+                                                    # This stores past gradients and increases optimisation
+                                                    # Increasing momentum increases smoothing
+                                                    # High value can cause overshooting
+                                                    # Nesterov fixes momentums weakness
+                                                    # It looks ahead into where the momentum is going and makes tweaks
+                                                    # Eg: Momentum is running down then hill and then braking when you see a curve
+                                                    # Nesterov is looking around the curve before getting there, adjusting the momentum
+                                                    # Nesterov controls the acceleration provided by momentum
 
 loss=keras.losses.SparseCategoricalCrossentropy() # The loss function used is this as the output classes have sparse labels and are exclusive
                                                     # They have classes from 1-10
@@ -62,8 +72,6 @@ model.compile(optimizer=optimizer,
             loss=loss,
             metrics=['accuracy'])
 
-model.save("Saved models/sgd_learning_rate_0.1.keras") # After the model has been trained it can be saved
-
 
 
 # Fitting the model
@@ -71,15 +79,5 @@ model.save("Saved models/sgd_learning_rate_0.1.keras") # After the model has bee
 history = model.fit(X_train,y_train,epochs=30,validation_data=(X_test,y_test))  # Epochs are the number of times the model sees the training data
                                                                                 # The model updates weights after each epoch
                                                                                 # The updation in weight directly depends on the learning rate
-'''
 
-# Load the saved model
-model=keras.models.load_model("Saved models/sgd_learning_rate_0.1.keras")
-
-X_new=X_test[10:15]
-
-y_prob=model.predict(X_new)
-y_pred=y_prob.argmax(axis=1)
-print(y_pred)
-print(y_test[10:15])
-
+model.save("Saved models/sgd_learning_rate_0.01_momenntum_0.9_nesterov_true.keras") # After the model has been trained it can be saved
