@@ -23,39 +23,59 @@ X_train,y_train=X_train[:-5000],y_train[:-5000]
 
 tf.random.set_seed(0)
 
-relu_act=keras.activations.relu
+elu_act=keras.activations.elu
 
 he_init=keras.initializers.HeNormal()
+
+l2_reg=keras.regularizers.l2()
 
 model=keras.Sequential([
     keras.layers.Input(shape=(32,32,3),name='Input'),
     
-    keras.layers.Conv2D(filters=32,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
-    keras.layers.Conv2D(filters=32,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
+    keras.layers.Conv2D(filters=32, kernel_initializer=he_init, kernel_size=(3,3),padding='same', kernel_regularizer=keras.regularizers.l2(0.005)),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation(activation='elu'),
+    keras.layers.Dropout(rate=0.2),
+    
+    keras.layers.Conv2D(filters=32, kernel_initializer=he_init, kernel_size=(3,3),padding='same', kernel_regularizer=keras.regularizers.l2(0.005)),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation(activation='elu'),
+    keras.layers.Dropout(rate=0.2),
+    
     keras.layers.MaxPool2D(pool_size=(2,2)),
     
-    keras.layers.Conv2D(filters=64,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
-    keras.layers.Conv2D(filters=64,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
-    keras.layers.MaxPool2D(pool_size=(2,2)),
+    keras.layers.Conv2D(filters=64, kernel_initializer=he_init, kernel_size=(3,3),padding='same', kernel_regularizer=keras.regularizers.l2(0.005)),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation(activation='elu'),
+    keras.layers.Dropout(rate=0.2),
     
-    keras.layers.Conv2D(filters=128,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
-    keras.layers.Conv2D(filters=128,kernel_size=(3,3),activation=relu_act,kernel_initializer=he_init,padding='same'),
+    keras.layers.Conv2D(filters=64, kernel_initializer=he_init, kernel_size=(3,3),padding='same', kernel_regularizer=keras.regularizers.l2(0.005)),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation(activation='elu'),
+    keras.layers.Dropout(rate=0.2),
+    
     keras.layers.MaxPool2D(pool_size=(2,2)),
     
     keras.layers.Flatten(),
-    keras.layers.Dense(128,activation=relu_act,kernel_initializer=he_init),
+    keras.layers.Dense(128,activation=elu_act, kernel_initializer=he_init, kernel_regularizer=l2_reg),
+    keras.layers.Dense(64,activation=elu_act,kernel_initializer=he_init, kernel_regularizer=l2_reg),
     keras.layers.Dense(10,activation='softmax')
+    
 ])
 
-optimizer=keras.optimizers.Adam(learning_rate=1e-4,clipnorm=1)
+SGD_optimizer=keras.optimizers.SGD(learning_rate=0.001, nesterov=True, momentum=0.9)
+
+Adam_optimizer=keras.optimizers.Adam(learning_rate=0.0001, clipnorm=1.0)
 
 loss=keras.losses.SparseCategoricalCrossentropy()
 
-model.compile(optimizer=optimizer,loss=loss,metrics=['accuracy'])
+model.compile(optimizer=Adam_optimizer,loss=loss,metrics=['accuracy'])
 
 tensorboard_cb=keras.callbacks.TensorBoard(run_dir)
 
 earlyStop_cb=keras.callbacks.EarlyStopping(monitor='val_accuracy',patience=3,verbose=1)
+
+lr_cb=keras.callbacks.ReduceLROnPlateau(monitor='val_accuracy',factor=0.5, patience=2,verbose=1, min_lr=1e-6)
 
 history=model.fit(
     X_train,y_train,
@@ -66,4 +86,4 @@ history=model.fit(
     callbacks=[tensorboard_cb,earlyStop_cb]
 )
 
-model.save("Saved Models/Adam1e-4_relu_heNormal.keras")
+model.save("Saved Models/CNN_3x3_2ConvBlocks_ELU_Adam_BN_DO02.keras")
