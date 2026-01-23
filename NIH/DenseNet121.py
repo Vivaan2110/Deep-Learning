@@ -14,14 +14,14 @@ x=keras.layers.GlobalAveragePooling2D()(x)
 x=keras.layers.BatchNormalization()(x)
 
 x=keras.layers.Dense(512, activation='elu')(x)
-x = keras.layers.Dropout(0.5)(x)
+x = keras.layers.Dropout(0.3)(x)
 
 outputs = keras.layers.Dense(14, activation="sigmoid")(x)
 
 model = keras.Model(inputs, outputs)
 
 model.compile(
-    optimizer=keras.optimizers.Adam(1e-3), 
+    optimizer=keras.optimizers.Adam(1e-4), 
     loss=weighted_bce, 
     metrics=[keras.metrics.AUC(num_labels=14, name="auc", multi_label=True),
             keras.metrics.BinaryCrossentropy(name="binary_accuracy")])
