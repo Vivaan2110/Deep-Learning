@@ -1,6 +1,6 @@
 import tensorflow as tf 
 import keras 
-from preprocessing_denseNet import test_ds, weighted_bce, all_labels
+from DenseNet121.preprocessing_denseNet import test_ds, weighted_bce, all_labels
 
 model=keras.models.load_model(
     '/Users/Vivaan/Documents/VS Code/Deep Learning/NIH/Saved Models/DenseNet121_Adam1e-4.keras', 
@@ -18,17 +18,17 @@ def preprocess_img(path):
     img=tf.expand_dims(img, axis=0)
     return img
 
-path='/Volumes/Extreme SSD/NIH dataset/kagglehub/datasets/nih-chest-xrays/data/images_002/images/00001373_018.png'
+path='/Users/Vivaan/Downloads/d527ff6fc1482161c9225345c4ab42_big_gallery.jpg'
 
 img=preprocess_img(path)
 
 pred=model.predict(img)
 probs=pred[0]
 
-binary=(probs>=0.5).astype(int)
+# Sorts in order and only prints top 5
+pairs=sorted(zip(all_labels, probs), key=lambda x:x[1], reverse=True)[:5]
 
-# Sorts in order adn only prints top 3
-pairs=sorted(zip(all_labels, probs), key=lambda x:x[1], reverse=True)[:3]
+print("Top 5 Findings:")
 
 for label,p in pairs:
     print(f"{label}: {p:.3f}")
