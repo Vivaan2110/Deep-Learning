@@ -46,5 +46,3 @@ class MultiHeadAttention(keras.layers.Layer):
         X=tf.transpose(X, perm=[0,2,1,3])
         batch_size=tf.shape(X)[0]
         return tf.reshape(X, shape=(batch_size, -1, self.num_heads, self.d_model))
-    
-    
