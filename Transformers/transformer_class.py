@@ -48,3 +48,24 @@ class TransformerEncoderStack(keras.layers.Layer):
             x=layer(x, training=False)
         
         return x
+
+# Convert the 2D images to 1D vectors for the transformer
+class PatchEmbedding(keras.layers.Layer): 
+    def __init(self, patch_size, d_model):
+        super().__init__()
+        self.patch_size=patch_size
+        self.proj=keras.layers.Dense(d_model)
+    
+    def call(self, images):
+        patches=tf.image.extract_patches(
+            images=images, # Returns a 4D tensor
+            sizes=[1,self.patch_size,self.patch_size,1], # Determines the size of each patch
+            strides=[1,self.patch_size,self.patch_size,1], # How far the window moves after extracting a patch
+            rates=[1,1,1,1],
+            padding="VALID" # Only extract patches that fit inside the image
+        )
+        
+        batch_size=tf.shape(patches)[0] # Gets the dynamic batch_size
+        patches=tf.reshape(patches,[batch_size-1,patches.shape[-1]])
+        
+        return self.proj(patches)
