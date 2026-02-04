@@ -8,6 +8,10 @@ class TransformerEncoder(keras.layers.Layer):
     def __init__(self, num_heads, d_model, d_ff, dropout=0.1):
         super().__init__()
         
+        self.num_heads=num_heads
+        self.d_model=d_model
+        self.d_ff=d_ff
+        
         self.mha=keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=d_model//num_heads)
         
         self.ffn=keras.Sequential([
@@ -51,9 +55,10 @@ class TransformerEncoderStack(keras.layers.Layer):
 
 # Convert the 2D images to 1D vectors for the transformer
 class PatchEmbedding(keras.layers.Layer): 
-    def __init(self, patch_size, d_model):
+    def __init__(self, patch_size, d_model):
         super().__init__()
         self.patch_size=patch_size
+        self.d_model=d_model
         self.proj=keras.layers.Dense(d_model)
     
     def call(self, images):
@@ -65,7 +70,21 @@ class PatchEmbedding(keras.layers.Layer):
             padding="VALID" # Only extract patches that fit inside the image
         )
         
-        batch_size=tf.shape(patches)[0] # Gets the dynamic batch_size
-        patches=tf.reshape(patches,[batch_size-1,patches.shape[-1]])
+        batch_size=tf.shape(images)[0] # Gets the dynamic batch_size
+        batch_dim=tf.shape(patches)[-1]
+        patches=tf.reshape(patches,[batch_size,-1,batch_dim])
         
         return self.proj(patches)
+
+class PositionEmbedding(keras.layers.Layer):
+    def __init__(self, num_patches, d_model):
+        super().__init__()
+        self.num_patches=num_patches
+        self.d_model=d_model
+        self.pos_embedding=self.add_weight(
+            shape=(1, num_patches, d_model), # Broadcasts the position of the patch to the entire batch
+            initializer="random_normal" # Starts the encoding with random small bacthes
+        )
+    
+    def call(self, X):
+        return X+self.pos_embedding # Adds pos_emb to the tokens
