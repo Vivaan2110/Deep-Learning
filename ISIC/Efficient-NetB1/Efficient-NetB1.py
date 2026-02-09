@@ -8,7 +8,7 @@ from Preprocessing_Eff import train_ds, valid_ds, pos_weights, valid_size, train
 
 tf.random.set_seed(0)
 
-model=keras.models.load_model('Saved Models/EfficientNetB1_Adam_Plateau_FineTuneSgdModel_1e-5_40UnfrozenLayers.keras', compile=False)
+model=keras.models.load_model('Saved Models/EfficientNetB1_Adam_Plateau_2ndFineTune_5e-6_80UnfrozenLayers.keras', compile=False)
 
 '''
 for i, layer in enumerate(model.layers):
@@ -18,7 +18,7 @@ for i, layer in enumerate(model.layers):
 # Finds all the BN layers and disables them as they de-stabablise fine tuning
 for layer in model.layers:
     if isinstance(layer, keras.layers.BatchNormalization):
-        layer.trainable=False
+        layer.trainable = False
 
 he_init=keras.initializers.HeNormal()
 
@@ -40,7 +40,7 @@ base_model=model.get_layer('efficientnetb1')
 
 base_model.trainable=True
 
-for layer in base_model.layers[:-80]:
+for layer in base_model.layers[:-120]:
     layer.trainable = False
 
 '''
@@ -91,7 +91,7 @@ lrPlateau=keras.callbacks.ReduceLROnPlateau(
 )
 
 checkpoint=keras.callbacks.ModelCheckpoint(
-    filepath="Saved Models/EfficientNetB1_Adam_Plateau_2ndFineTune_5e-6_80UnfrozenLayers.keras",
+    filepath="Saved Models/EfficientNetB1_Adam_Plateau_3rdFineTune_5e-6_120UnfrozenLayers.keras",
     verbose=True, 
     monitor="val_auc",
     save_best_only=True,
@@ -103,9 +103,9 @@ history=model.fit(
     validation_data=valid_ds,
     batch_size=32,
     class_weight=class_weight,
-    epochs=10,
+    epochs=5,
     verbose=1,
     callbacks=[earlyStop_cb,lrPlateau, checkpoint]
 )
 
-model.save("Saved Models/EfficientNetB1_Adam_Plateau_2ndFineTune_5e-6_80UnfrozenLayers.keras")
+model.save("Saved Models/EfficientNetB1_Adam_Plateau_3rdFineTune_5e-6_120UnfrozenLayers.keras")
