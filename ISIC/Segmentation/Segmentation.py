@@ -112,14 +112,14 @@ adam=keras.optimizers.Adam(1e-4, clipnorm=1.0)
 sgd=keras.optimizers.SGD(1e-3,momentum=0.95, nesterov=True)
 
 model.compile(
-    optimizer=sgd,
+    optimizer=adam,
     loss=combined_loss,
     metrics=[dice_metric]
 )
 
 earlyStop_cb=keras.callbacks.EarlyStopping(
     monitor='val_dice_metric',
-    patience=7,
+    patience=10,
     verbose=1,
     restore_best_weights=True,
     mode='max'
@@ -130,7 +130,7 @@ lrPlateau_cb=keras.callbacks.ReduceLROnPlateau(
     patience=3,
     factor=0.5,
     verbose=1,
-    min_lr=1e-7,
+    min_lr=5e-7,
     mode='max'
 )
 

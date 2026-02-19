@@ -1,5 +1,4 @@
 import tensorflow as tf 
-import tensorflow_addons as tfa 
 import keras 
 import numpy as np 
 import os
@@ -36,6 +35,8 @@ def get_image_mask_paths(img_path, mask_path):
         mask_paths.append(os.path.join(mask_path, mask_name))
     
     return img_paths, mask_paths
+
+
 
 def mask_preprocess(path):
     mask=tf.io.read_file(path)
@@ -104,19 +105,6 @@ def data_aug(img, mask):
     img = tf.clip_by_value(img, 0.0, 1.0) # Used as brightness can increase pixel value beyond 1 which is invalid
     
     img=tf.image.stateless_random_contrast(img, seed=seed4, lower=0.9, upper=1.1)
-    
-    angle=tf.random.stateless_uniform([],seed5, minval=-0.2,maxval=0.2) # Image can be rotated randomly by 0.2 radians
-    
-    img=tfa.image.rotate(img, angle, interpolation='bilinear')
-    mask=tfa.image.rotate(mask, angle, interpolation='nearest')
-    
-    dx=tf.random.stateless_uniform([], seed6, minval=-7, maxval=7) # X and Y can change differently 
-    dy=tf.random.stateless_uniform([], seed6+tf.constant([1,0]), minval=-7, maxval=7)
-    
-    translations=tf.cast([dx,dy], tf.float32) # Casting as translate expects float translations
-    
-    img=tfa.image.translate(img, translations, interpolation='bilinear')
-    mask=tfa.image.translate(mask, translations, interpolation='nearest')
     
     return img, mask
 
