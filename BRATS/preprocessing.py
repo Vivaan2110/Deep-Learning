@@ -2,6 +2,7 @@ import h5py
 import tensorflow as tf 
 import os 
 import numpy as np 
+import keras
 
 BASE='/Volumes/Extreme SSD/BraTS-2020 Segmentation'
 
@@ -10,7 +11,7 @@ IMAGE_FILE=BASE+'/BraTS Training/content/data'
 CACHE_PATH=BASE+"/cache"
 
 def data_aug(img, mask):
-    seed=tf.random.uniform([], maxval=10000, dtype=tf.int32)
+    seed=tf.random.uniform([2], maxval=10000, dtype=tf.int32)
     
     seed1=seed+tf.constant([1,0])
     seed2=seed+tf.constant([2,0])
@@ -29,11 +30,6 @@ def data_aug(img, mask):
     img=tf.image.rot90(img, k)
     mask=tf.image.rot90(mask, k)
     
-    img=tf.image.stateless_random_brightness(img, max_delta=0.15, seed=seed4)
-    img = tf.clip_by_value(img, 0.0, 1.0)
-    
-    img=tf.image.stateless_random_contrast(img, seed=seed5, lower=0.9, upper=1.1)
-    
     return img, mask
 
 def get_file_path(image_file):
@@ -41,7 +37,10 @@ def get_file_path(image_file):
     
     for fname in sorted(os.listdir(image_file)):
         
-        if not(fname.endswith('.h5')):
+        if fname.startswith('._'):
+            continue
+        
+        if not fname.endswith('.h5'):
             continue
         
         file_path.append(os.path.join(image_file,fname))
@@ -54,8 +53,8 @@ def load_h5(path): # Main function to be mapped
     # Tensorflow cant execute python file I/O so we have to make a helper function
     def _load(path_str):
         with h5py.File(path_str.decode(), 'r') as f:
-            img=f['image'][:]
-            mask=f['mask'][:]
+            img=f['image'][:].astype(np.float32)
+            mask=f['mask'][:].astype(np.float32)
         
         return img, mask
     
@@ -65,49 +64,106 @@ def load_h5(path): # Main function to be mapped
         [tf.float32, tf.float32] # Expected outputs
     )
     
-    img.set_shape([240,240,4])
-    mask.set_shape([240,240,3])
+    img.set_shape([128,128,4])
+    mask.set_shape([128,128,3])
+    
+    epsilon=1e-6
+    
+    mean=tf.reduce_mean(img, axis=(0,1), keepdims=True)
+    std=tf.math.reduce_std(img, axis=(0,1), keepdims=True)
+    
+    img=(img-mean)/(std+epsilon)
+    
+    img = tf.image.resize(img, (128,128), method='bilinear')
+    mask = tf.image.resize(mask, (128,128), method='nearest')
     
     return img, mask
 
-file_paths=get_file_path(IMAGE_FILE)
+# Checks if the mask has a tumor or no
+def has_tumor(img, mask):
+    return tf.reduce_sum(mask)>0
 
-dataset=tf.data.Dataset.from_tensor_slices(file_paths)
+paths=get_file_path(IMAGE_FILE)
 
-TOTAL=len(file_paths)
-TRAIN_SIZE=TOTAL*0.7
-TEST_SIZE=TOTAL*0.15
-VALID_SIZE=TOTAL-(TRAIN_SIZE+TEST_SIZE)
+np.random.shuffle(paths)
 
-dataset=(
-    dataset
-    .map(load_h5, num_parallel_calls=tf.data.AUTOTUNE)
-    .shuffle(buffer_size=TOTAL, seed=0)
-)
+n = len(paths)
 
-train_ds=dataset.take(TRAIN_SIZE)
-rest=dataset.skip(TRAIN_SIZE)
+train = paths[:int(0.7 * n)]
+valid = paths[int(0.7 * n):int(0.85 * n)]
+test  = paths[int(0.85 * n):]
 
-valid_ds=rest.take(VALID_SIZE)
-test_ds=rest.skip(VALID_SIZE)
+TRAIN_SIZE=len(train)
+TEST_SIZE=len(test)
+VALID_SIZE=len(valid)
+
+train_ds=tf.data.Dataset.from_tensor_slices(train)
+test_ds=tf.data.Dataset.from_tensor_slices(test)
+valid_ds=tf.data.Dataset.from_tensor_slices(valid)
 
 train_ds=(
     train_ds
-    .cache(CACHE_PATH+"/train")
+    .map(load_h5, num_parallel_calls=tf.data.AUTOTUNE)
+    .filter(has_tumor)
+    .shuffle(256, seed=0)
+    .map(data_aug, num_parallel_calls=tf.data.AUTOTUNE)
+    .cache()
     .batch(32)
     .prefetch(tf.data.AUTOTUNE)
 )
 
 valid_ds=(
     valid_ds
-    .cache(CACHE_PATH+"/valid")
+    .map(load_h5, num_parallel_calls=tf.data.AUTOTUNE)
+    .filter(has_tumor)
+    .cache()
     .batch(32)
     .prefetch(tf.data.AUTOTUNE)
 )
 
 test_ds=(
     test_ds
-    .cache(CACHE_PATH+"/test")
+    .map(load_h5, num_parallel_calls=tf.data.AUTOTUNE)
+    .filter(has_tumor)
+    .cache()
     .batch(32)
     .prefetch(tf.data.AUTOTUNE)
 )
+
+def dice_loss(y_true, y_pred):
+    epsilon=1e-6
+    y_true=tf.cast(y_true, dtype=tf.float32)
+    y_pred=tf.cast(y_pred, dtype=tf.float32)
+    
+    axes=(1,2,3)
+    
+    intersection=tf.reduce_sum(y_true*y_pred,axis=axes)
+    union=tf.reduce_sum(y_true,axis=axes)+tf.reduce_sum(y_pred,axis=axes)
+    
+    dice=(2*intersection+epsilon)/(union+epsilon)
+    
+    return 1-tf.reduce_mean(dice)
+
+def combined_loss(y_true, y_pred):
+    y_true=tf.cast(y_true, dtype=tf.float32)
+    y_pred=tf.cast(y_pred, dtype=tf.float32)
+    categorical=keras.losses.categorical_crossentropy(y_true, y_pred)
+    dice=dice_loss(y_true, y_pred)
+    
+    return categorical+dice
+
+def dice_metric(y_true, y_pred):
+    epsilon=1e-6
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.argmax(y_pred, axis=-1)
+    y_pred = tf.one_hot(y_pred, depth=3)
+
+    axes = (1, 2)
+    
+    intersection=tf.reduce_sum(y_true*y_pred,axis=axes)
+    union=tf.reduce_sum(y_true,axis=axes)+tf.reduce_sum(y_pred,axis=axes)
+    return tf.reduce_mean((2*intersection+epsilon)/(union+epsilon))
+
+for img, mask in train_ds.take(1):
+    print(tf.reduce_max(mask), tf.reduce_min(mask))
+    print(np.unique(np.sum(mask, axis=-1)))
