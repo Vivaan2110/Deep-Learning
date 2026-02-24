@@ -142,4 +142,4 @@ history=model.fit(
     validation_data=valid_ds
 )
 
-model.save('Saved Models/Seg_ELU_L2_Adam_LrPlateau_CombinedLoss_DiceMetric.keras')
+#model.save('Saved Models/Seg_ELU_L2_Adam_LrPlateau_CombinedLoss_DiceMetric.keras')
