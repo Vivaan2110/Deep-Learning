@@ -17,10 +17,7 @@ token_ids=tf.convert_to_tensor(token_ids)
 
 embedding=keras.layers.Embedding(
     input_dim=len(vocab), 
-    output_dim=10
+    output_dim=128
 )
 
 vectors=embedding(token_ids)
-
-print(vectors[6])
-print(vectors[9]-vectors[4]+vectors[1])

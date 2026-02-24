@@ -35,7 +35,7 @@ PE=keras.layers.Embedding(
     output_dim=d_model
 )
 
-positions=tf.range(start=0, limit=token_ids.shape[0], delta=1) # Creates a tensor from 0 to seq_len-1 with step of 1
+positions=tf.range(start=0, limit=tf.shape(token_ids[0]), delta=1) # Creates a tensor from 0 to (input words)-1 with step of 1
 
 positions=tf.expand_dims(positions, axis=0)
 
@@ -43,3 +43,28 @@ X=vectors + PE(positions)
 
 print(vectors.shape)
 print(PE(positions).shape)
+
+# Create a function so it can be stacked multiple times
+def encoder_block(X):
+
+    attention=keras.layers.MultiHeadAttention( # num_heads*key_dims has to be d_model
+        num_heads=8,
+        key_dim=16
+    )(X,X,X, use_causal_mask=True)
+    
+    X=keras.layers.LayerNormalization()(X+attention)
+
+    feed_forward=keras.Sequential([
+        keras.layers.Dense(4*d_model, activation='relu'),
+        keras.layers.Dense(d_model)
+    ]
+    )(X)
+
+    X=keras.layers.LayerNormalization()(X+feed_forward)
+    
+    return X
+
+N=12
+# Stack the encoder block 12 times
+for i in range(N):
+    X=encoder_block(X)
