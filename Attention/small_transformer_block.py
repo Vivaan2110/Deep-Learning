@@ -41,9 +41,6 @@ positions=tf.expand_dims(positions, axis=0)
 
 X=vectors + PE(positions)
 
-print(vectors.shape)
-print(PE(positions).shape)
-
 # Create a function so it can be stacked multiple times
 def encoder_block(X):
 
@@ -68,3 +65,8 @@ N=12
 # Stack the encoder block 12 times
 for i in range(N):
     X=encoder_block(X)
+
+logits=keras.layers.Dense(vocab_size)(X)
+probs=tf.nn.softmax(logits)
+
+print(logits.shape)
