@@ -1,15 +1,16 @@
 import keras 
 import tensorflow as tf 
 
-d_model=128
-seq_len=20
+d_model=256
+seq_len=128
 
 vocab=open('/Users/Vivaan/Documents/VS Code/Deep Learning/Attention/Text datasets/Shakespeare.txt').read()
 
 vectorizer=keras.layers.TextVectorization(
-    max_tokens=10000,
-    standardize='lower_and_strip_punctuation',
-    output_mode='int'
+    max_tokens=100,
+    standardize=None,
+    output_mode='int',
+    split='character'
 )
 
 vectorizer.adapt([vocab])
@@ -25,8 +26,9 @@ def split(seq):
 
 dataset=(
     dataset
+    .shuffle(5000)
     .map(split)
-    .batch(32)
+    .batch(16)
     .prefetch(tf.data.AUTOTUNE)
 )
 
@@ -50,18 +52,22 @@ pos_encoding=PE(positions)
 
 X=embedding+pos_encoding
 
-for _ in range(12):
+for _ in range(6):
     MHA=keras.layers.MultiHeadAttention(
-        num_heads=8,
+        num_heads=16,
         key_dim=16
     )(X,X,X,use_causal_mask=True)
+    
+    MHA=keras.layers.Dropout(0.125)(MHA)
 
     X=keras.layers.LayerNormalization()(X+MHA)
     
     feed_forw=keras.Sequential([
-        keras.layers.Dense(4*d_model, activation='relu'),
+        keras.layers.Dense(4*d_model, activation='gelu'),
         keras.layers.Dense(d_model)
     ])(X)
+    
+    feed_forw=keras.layers.Dropout(0.125)(feed_forw)
     
     X=keras.layers.LayerNormalization()(X+feed_forw)
 
@@ -71,11 +77,13 @@ model=keras.Model(inputs=inputs,outputs=logits)
 
 loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-adam=keras.optimizers.Adam(learning_rate=1e-3)
+adam=keras.optimizers.Adam(learning_rate=3e-4)
 
 model.compile(
     optimizer=adam,
     loss=loss
 )
 
-model.fit(dataset, epochs=40)
+model.fit(dataset, 
+          epochs=40
+)
