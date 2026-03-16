@@ -18,7 +18,7 @@ def tokenise(text: str):
     
     return ids 
 
-token_ids=tokenise("The cat ate a rat")
+token_ids=tokenise("The cat ate a rat and a bat")
 token_ids=tf.constant([token_ids]) # Adds a batch dimension making it (batch, vocab_size, d_model)
 
 vocab_size: int = len(vocab) # Total number of words known
@@ -70,3 +70,4 @@ logits=keras.layers.Dense(vocab_size)(X)
 probs=tf.nn.softmax(logits)
 
 print(logits.shape)
+print(probs.shape)
