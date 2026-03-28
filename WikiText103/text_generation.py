@@ -36,11 +36,11 @@ def generate_text(model, sp, prompt, seq_len, max_tokens=50, temperature=1.0, k=
             indices=[[0,unk_id]],
             updates=[-1e-9]
         )
-        
+        '''
         # Adds a repetition penalty
         for token in set(ids):
             logits[0,token]/=1.2
-        
+        '''
         probs=tf.nn.softmax(logits)
         
         values, indices=tf.math.top_k(probs, k) # Only picks the top k elemets and returns its value and its position
