@@ -29,10 +29,6 @@ def data_aug(img, label):
     
     img=tf.image.stateless_random_contrast(img, seed=seed3, lower=0.9, upper=1.1)
     
-    k=tf.random.stateless_uniform([], seed=seed4, minval=0, maxval=5, dtype=tf.int32)
-    
-    img=tf.image.rot90(img, k)
-    
     return img, label
 
 train_ds=(
@@ -43,7 +39,7 @@ train_ds=(
     .prefetch(tf.data.AUTOTUNE)
 )
 
-patch_size=2
+patch_size=4
 d_model=128
 image_size=32
 num_patches=(image_size//patch_size)**2
@@ -90,7 +86,7 @@ outputs=keras.layers.Dense(10, activation='softmax')(x)
 
 model=keras.Model(inputs=inputs, outputs=outputs)
 
-AdamW=keras.optimizers.Adam(learning_rate=1e-4, weight_decay=1e-4,clipnorm=1.0)
+AdamW=keras.optimizers.AdamW(learning_rate=3e-4, weight_decay=1e-4,clipnorm=1.0)
 
 SCE=keras.losses.SparseCategoricalCrossentropy()
 
@@ -123,4 +119,4 @@ history=model.fit(
     verbose=1
 )
 
-model.save('Saved Models/ViT_dmodel128_patchsize2_numheads4_dataaug_lr1e-4.keras')
+model.save('Saved Models/ViT_dmodel128_patchsize4_numheads4_dataaug_lr3e-4.keras')

@@ -108,6 +108,7 @@ train_ds=(
     .shuffle(256, seed=0)
     .map(data_aug, num_parallel_calls=tf.data.AUTOTUNE)
     .cache()
+    .repeat()
     .batch(32)
     .prefetch(tf.data.AUTOTUNE)
 )
@@ -117,6 +118,7 @@ valid_ds=(
     .map(load_h5, num_parallel_calls=tf.data.AUTOTUNE)
     .filter(has_tumor)
     .cache()
+    .repeat()
     .batch(32)
     .prefetch(tf.data.AUTOTUNE)
 )
@@ -155,10 +157,15 @@ def combined_loss(y_true, y_pred):
 def dice_metric(y_true, y_pred):
     epsilon=1e-6
     y_true = tf.cast(y_true, tf.float32)
-    y_pred = tf.argmax(y_pred, axis=-1)
-    y_pred = tf.one_hot(y_pred, depth=3)
+    
+    if y_true.shape[-1] != 3:
+        y_true = tf.one_hot(tf.cast(y_true, tf.int32), depth=3)
+        
+    y_pred = tf.nn.softmax(y_pred)
+    
+    y_pred=tf.cast(y_pred, tf.float32)
 
-    axes = (1, 2)
+    axes = (1, 2, 3)
     
     intersection=tf.reduce_sum(y_true*y_pred,axis=axes)
     union=tf.reduce_sum(y_true,axis=axes)+tf.reduce_sum(y_pred,axis=axes)

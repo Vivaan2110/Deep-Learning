@@ -142,11 +142,11 @@ lrPlateau_cb=keras.callbacks.ReduceLROnPlateau(
 history=model.fit(
     train_ds,
     batch_size=32,
-    epochs=130,
+    epochs=13,
     callbacks=[earlyStop_cb, lrPlateau_cb],
     validation_data=valid_ds,
-    steps_per_epoch = 200,
-    validation_steps = 200
+    steps_per_epoch = 1500,
+    validation_steps = 100
 )
 
 model.save('Saved Models/Seg_Adam_Elu_LrPlateau_CombinedLoss_DiceMetric.keras')

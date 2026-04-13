@@ -96,4 +96,4 @@ dataset = tf.data.Dataset.from_tensor_slices(
     ((enc_arr, dec_in_arr), dec_out_arr)
 )
 
-dataset = dataset.shuffle(10000).batch(16).prefetch(tf.data.AUTOTUNE)
+dataset = dataset.shuffle(10000).batch(8).prefetch(tf.data.AUTOTUNE)
