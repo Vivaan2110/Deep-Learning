@@ -10,7 +10,7 @@ elu_act=keras.activations.elu
 
 l2_reg=keras.regularizers.l2(1e-4)
 
-inputs=keras.layers.Input(shape=(384,384,3))
+inputs=keras.layers.Input(shape=(288,288,3))
 
 # Encoder which downscales the image
 x=keras.layers.Conv2D(filters=32, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(inputs)

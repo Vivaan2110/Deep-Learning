@@ -1,6 +1,6 @@
 import keras
 import tensorflow as tf
-from preprocessing import train_ds, valid_ds, TRAIN_SIZE, VALID_SIZE, dice_metric, combined_loss
+from preprocessing import train_ds, valid_ds, TRAIN_SIZE, VALID_SIZE, dice_metric, combined_loss, dice_ET, dice_TC, dice_WT
 
 keras.mixed_precision.set_global_policy('mixed_float16')
 
@@ -108,18 +108,18 @@ x=keras.layers.Conv2D(filters=16, kernel_size=(3,3), kernel_initializer=he_init,
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
 
-outputs=keras.layers.Conv2D(3, kernel_size=(1,1), activation='softmax')(x)
+outputs=keras.layers.Conv2D(4, kernel_size=(1,1), activation='softmax')(x)
 
 model=keras.Model(inputs, outputs)
 
-adam=keras.optimizers.Adam(3e-5, clipnorm=1.0)
+adam=keras.optimizers.Adam(1e-4, clipnorm=1.0)
 
 sgd=keras.optimizers.SGD(1e-3,momentum=0.95, nesterov=True)
 
 model.compile(
     optimizer=adam,
     loss=combined_loss,
-    metrics=[dice_metric]
+    metrics=[dice_metric, dice_ET, dice_TC, dice_WT]
 )
 
 earlyStop_cb=keras.callbacks.EarlyStopping(
@@ -149,4 +149,4 @@ history=model.fit(
     validation_steps = 100
 )
 
-model.save('Saved Models/Seg_Adam_Elu_LrPlateau_CombinedLoss_DiceMetric.keras')
+model.save('Saved Models/Seg_Adam_lr1e-4_LrPlateau_CombinedLoss_DiceMetric_DicePerClass.keras')
