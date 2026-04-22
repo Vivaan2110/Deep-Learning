@@ -1,6 +1,6 @@
 import keras
 import tensorflow as tf 
-from preprocessing import train_ds, valid_ds, dice_metric, combined_loss, STEPS_PER_EPOCH
+from preprocessing import train_ds, valid_ds, dice_metric, dice_metric_cup, dice_metric_disc, combined_loss, STEPS_PER_EPOCH, VALID_STEPS
 
 tf.random.set_seed(0)
 
@@ -19,37 +19,43 @@ x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.Conv2D(filters=32, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
-x=keras.layers.MaxPool2D((2,2))(x)
 block_1_output=x
-
-x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
-x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.MaxPool2D((2,2))(x)
+
+skip_layer_1=keras.layers.Conv2D(filters=64, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x,skip_layer_1])
 block_2_output=x
-
-x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
-x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.MaxPool2D((2,2))(x)
+
+skip_layer_2=keras.layers.Conv2D(filters=128, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x,skip_layer_2])
 block_3_output=x
-
-x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
-x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.MaxPool2D((2,2))(x)
-block_4_output=x
 
-x=keras.layers.Conv2D(512, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(block_4_output)
+skip_layer_3=keras.layers.Conv2D(filters=256, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x,skip_layer_3])
+block_4_output=x
+x=keras.layers.MaxPool2D((2,2))(x)
+
+x=keras.layers.Conv2D(512, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.Dropout(0.1)(x)
@@ -63,10 +69,25 @@ bottleneck=x
 
 # Decoder which upscales the images
 
-# 2x2 kernel upscaled from H->2H
-x=keras.layers.Conv2DTranspose(filters=128,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(bottleneck)
-x=keras.layers.Concatenate()([x,block_3_output]) # Up from 4->3
+x=keras.layers.Conv2DTranspose(filters=256,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(bottleneck)
+x=keras.layers.Concatenate()([x,block_4_output])
 x=keras.layers.Dropout(0.2)(x)
+
+block_1_decoder_output=keras.layers.Conv2D(256, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+
+x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.Conv2D(filters=256, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+x=keras.layers.BatchNormalization()(x)
+x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x, block_1_decoder_output])
+
+x=keras.layers.Conv2DTranspose(filters=128,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(x)
+x=keras.layers.Concatenate()([x,block_3_output])
+x=keras.layers.Dropout(0.2)(x)
+
+block_2_decoder_output=keras.layers.Conv2D(128, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 
 x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
@@ -74,39 +95,37 @@ x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.Conv2D(filters=128, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x, block_2_decoder_output])
 
 x=keras.layers.Conv2DTranspose(filters=64,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(x)
 x=keras.layers.Concatenate()([x,block_2_output])
 x=keras.layers.Dropout(0.2)(x)
 
+block_3_decoder_output=keras.layers.Conv2D(64, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+
 x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.Conv2D(filters=64, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x, block_3_decoder_output])
 
 x=keras.layers.Conv2DTranspose(filters=32,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(x)
 x=keras.layers.Concatenate()([x,block_1_output])
 x=keras.layers.Dropout(0.2)(x)
 
+block_4_decoder_output=keras.layers.Conv2D(32, kernel_size=(1,1), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
+
 x=keras.layers.Conv2D(filters=32, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
 x=keras.layers.Conv2D(filters=32, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
 x=keras.layers.BatchNormalization()(x)
 x=keras.layers.Activation(elu_act)(x)
+x=keras.layers.add([x, block_4_decoder_output])
 
-x=keras.layers.Conv2DTranspose(filters=16,kernel_size=(2,2),strides=2, padding="same", kernel_initializer=he_init, kernel_regularizer=l2_reg)(x)
-
-x=keras.layers.Conv2D(filters=16, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
-x=keras.layers.Conv2D(filters=16, kernel_size=(3,3), kernel_initializer=he_init, kernel_regularizer=l2_reg, padding="same")(x)
-x=keras.layers.BatchNormalization()(x)
-x=keras.layers.Activation(elu_act)(x)
-
-outputs=keras.layers.Conv2D(3, kernel_size=(1,1), activation=None)(x)
+outputs=keras.layers.Conv2D(3, kernel_size=(1,1), activation='softmax')(x)
 
 model=keras.Model(inputs, outputs)
 
@@ -117,7 +136,7 @@ sgd=keras.optimizers.SGD(1e-3,momentum=0.95, nesterov=True)
 model.compile(
     optimizer=adamW,
     loss=combined_loss,
-    metrics=[dice_metric]
+    metrics=[dice_metric, dice_metric_disc, dice_metric_cup]
 )
 
 earlyStop_cb=keras.callbacks.EarlyStopping(
@@ -143,7 +162,8 @@ history=model.fit(
     epochs=40,
     callbacks=[earlyStop_cb, lrPlateau_cb],
     validation_data=valid_ds,
-    steps_per_epoch=STEPS_PER_EPOCH
+    steps_per_epoch=STEPS_PER_EPOCH,
+    validation_steps=VALID_STEPS
 )
 
-model.save("Saved Models/Seg_adamw_lr3e-4_combinedloss_weightedscce_dicemetric.keras")
+model.save("Saved Models/Seg_ResidualUNetStyle_adamw_lr3e-4_combinedloss_dicemetric_perclassdicemetricandloss.keras")                                       

@@ -109,12 +109,13 @@ test_ds=(
     .prefetch(tf.data.AUTOTUNE)
 )
 
-def dice_loss(y_true, y_pred):
+def dice_loss_disc(y_true, y_pred):
     if len(y_true.shape) == 4:
         y_true = tf.squeeze(y_true, axis=-1)
     y_true = tf.one_hot(y_true, depth=3)
 
-    y_pred = tf.nn.softmax(y_pred)
+    y_true=y_true[...,2]
+    y_pred=y_pred[...,2]
 
     axes = (1, 2)
 
@@ -123,7 +124,22 @@ def dice_loss(y_true, y_pred):
 
     dice = (2 * intersection + 1e-6) / (union + 1e-6)
 
-    dice = dice[:, 1:]  
+    return 1 - tf.reduce_mean(dice)
+
+def dice_loss_cup(y_true, y_pred):
+    if len(y_true.shape) == 4:
+        y_true = tf.squeeze(y_true, axis=-1)
+    y_true = tf.one_hot(y_true, depth=3)
+
+    y_true=y_true[...,1]
+    y_pred=y_pred[...,1]
+
+    axes = (1, 2)
+
+    intersection = tf.reduce_sum(y_true * y_pred, axis=axes)
+    union = tf.reduce_sum(y_true, axis=axes) + tf.reduce_sum(y_pred, axis=axes)
+
+    dice = (2 * intersection + 1e-6) / (union + 1e-6)
 
     return 1 - tf.reduce_mean(dice)
 
@@ -132,10 +148,10 @@ def weighted_scce(y_true, y_pred):
         y_true = tf.squeeze(y_true, axis=-1)
     y_true=tf.cast(y_true, tf.int32)
     
-    ce=keras.losses.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
+    ce=keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
     
     # [background, disc, cup]
-    weights=tf.constant([0.2, 1.0, 2.0])
+    weights=tf.constant([0.2, 1.0, 6.0])
     weights=tf.gather(weights, y_true)
     
     weighted_ce=ce*tf.cast(weights, tf.float32)
@@ -148,7 +164,7 @@ def combined_loss(y_true, y_pred):
     y_true = tf.cast(y_true, tf.int32)            
 
     ce = weighted_scce(y_true, y_pred)
-    dice = dice_loss(y_true, y_pred)
+    dice = 2.0*dice_loss_cup(y_true, y_pred)+1.0*dice_loss_disc(y_true, y_pred)
 
     return ce + 2.0*dice
 
@@ -159,8 +175,7 @@ def dice_metric(y_true, y_pred):
         y_true = tf.squeeze(y_true, axis=-1)
 
     y_true = tf.one_hot(tf.cast(y_true, tf.int32), depth=3)
-    y_pred = tf.nn.softmax(y_pred)
-
+    
     axes = (1, 2, 3)
 
     intersection = tf.reduce_sum(y_true * y_pred, axis=axes)
@@ -168,4 +183,33 @@ def dice_metric(y_true, y_pred):
 
     return tf.reduce_mean((2 * intersection + epsilon) / (union + epsilon))
 
+def dice_metric_disc(y_true, y_pred):
+    y_true=tf.squeeze(y_true, axis=-1)
+    y_pred=tf.argmax(y_pred, axis=-1)
+    
+    axes=(1, 2)
+    
+    y_true=tf.cast(y_true==2, tf.float32)
+    y_pred=tf.cast(y_pred==2, tf.float32)
+    
+    intersection=tf.reduce_sum(y_true*y_pred, axis=axes)
+    union=tf.reduce_sum(y_true,axes)+tf.reduce_sum(y_pred, axes)
+    
+    return tf.reduce_mean((2 * intersection + 1e-6) / (union + 1e-6))
+
+def dice_metric_cup(y_true, y_pred):
+    y_true=tf.squeeze(y_true, axis=-1)
+    y_pred=tf.argmax(y_pred, axis=-1)
+    
+    axes=(1, 2)
+    
+    y_true=tf.cast(y_true==1, tf.float32)
+    y_pred=tf.cast(y_pred==1, tf.float32)
+    
+    intersection=tf.reduce_sum(y_true*y_pred, axis=axes)
+    union=tf.reduce_sum(y_true,axes)+tf.reduce_sum(y_pred, axes)
+    
+    return tf.reduce_mean((2 * intersection + 1e-6) / (union + 1e-6))
+
 STEPS_PER_EPOCH=len(train_img)//8
+VALID_STEPS=len(val_img)//(80)

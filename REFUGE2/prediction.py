@@ -1,17 +1,19 @@
 import keras 
 import tensorflow as tf 
-from preprocessing import dice_metric, combined_loss, test_ds
+from preprocessing import dice_metric, combined_loss, dice_metric_cup, dice_metric_disc, test_ds
 import matplotlib.pyplot as plt
 
 model=keras.models.load_model(
-    "Saved Models/Seg_adamw_lr3e-4_combinedloss_weightedscce_dicemetric.keras",
+    '/Users/Vivaan/Documents/VS Code/Deep Learning/REFUGE2/Saved Models/Seg_ResidualUNetStyle_adamw_lr3e-4_combinedloss_dicemetric_perclassdicemetricandloss.keras',
     custom_objects={
         'combined_loss':combined_loss,
-        'dice_metric':dice_metric
+        'dice_metric':dice_metric,
+        'dice_metric_cup': dice_metric_cup,
+        'dice_metric_disc':dice_metric_disc
     }
 )
 
-for img, mask in test_ds.skip(10).take(1):
+for img, mask in test_ds.skip(2).take(1):
     break
 
 pred=model.predict(img)
