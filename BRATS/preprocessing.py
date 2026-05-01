@@ -206,7 +206,8 @@ def weighted_scce(y_true, y_pred):
     return tf.reduce_mean(ce * tf.cast(pixel_weights, tf.float32))
 
 def combined_loss(y_true, y_pred):
-    return 0.5*weighted_scce(y_true, y_pred) + 1.5 * dice_loss(y_true, y_pred)
+    y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
+    return 0.3*weighted_scce(y_true, y_pred) + 0.7* dice_loss(y_true, y_pred)
 
 def dice_metric(y_true, y_pred):
     y_true = tf.squeeze(y_true, axis=-1)
